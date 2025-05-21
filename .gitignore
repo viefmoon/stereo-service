@@ -1,0 +1,12 @@
+# Entornos virtuales
+.venv/
+# Python
+__pycache__/
+*.py[cod]
+# Configs de IDE
+.vscode/
+.idea/
+# Docker
+*.tar
+# Archivos sensibles
+.env

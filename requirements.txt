@@ -1,0 +1,7 @@
+supabase
+opencv-python-headless
+numpy
+ultralytics
+fastapi
+uvicorn[standard]
+aiohttp
