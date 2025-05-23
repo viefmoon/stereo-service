@@ -5,3 +5,5 @@ ultralytics
 fastapi
 uvicorn[standard]
 aiohttp
+pillow
+python-dotenv

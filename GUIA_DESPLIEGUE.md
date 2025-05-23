@@ -37,7 +37,7 @@ Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
 ```
 SUPABASE_URL=https://tu-proyecto.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key
-BUCKET_NAME=stereo
+BUCKET_NAME=crop-images
 ```
 
 Este archivo `.env` es útil para el desarrollo local, pero para el despliegue en Cloud Run, las variables se configurarán directamente en el comando de despliegue o mediante Secret Manager (aunque esta última opción la eliminaremos de esta guía simplificada).
@@ -85,7 +85,7 @@ Las variables pasadas con `--set-env-vars` deben estar en formato `NOMBRE1=VALOR
 Reemplaza `[TU_SUPABASE_SERVICE_ROLE_KEY_AQUI]` con tu clave de servicio real de Supabase y `[ID-DE-TU-PROYECTO]` con el ID de tu proyecto de Google Cloud.
 
 ```bash
-gcloud run deploy stereo-service --image us-central1-docker.pkg.dev/[ID-DE-TU-PROYECTO]/stereo-repo/stereo-service:latest --platform managed --region us-central1 --allow-unauthenticated --set-env-vars "SUPABASE_URL=https://gbeffavfdvysxabblpdt.supabase.co,SUPABASE_SERVICE_ROLE_KEY=[TU_SUPABASE_SERVICE_ROLE_KEY_AQUI],BUCKET_NAME=stereo" --port 8000 --memory 1Gi --project=[ID-DE-TU-PROYECTO]
+gcloud run deploy stereo-service --image us-central1-docker.pkg.dev/[ID-DE-TU-PROYECTO]/stereo-repo/stereo-service:latest --platform managed --region us-central1 --allow-unauthenticated --set-env-vars "SUPABASE_URL=https://tu-proyecto.supabase.co,SUPABASE_SERVICE_ROLE_KEY=[TU_SUPABASE_SERVICE_ROLE_KEY_AQUI],BUCKET_NAME=crop-images" --port 8000 --memory 1Gi --project=[ID-DE-TU-PROYECTO]
 ```
 
 > **Nota**: Cloud Run establece una variable de entorno `PORT` en la que espera que tu aplicación escuche. Por defecto, esta variable es `8080`. Tu `Dockerfile` está configurado para usar `uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}`, lo que significa que usará el valor de `PORT` si está disponible, o `8000` en caso contrario. Al añadir `--port 8000` al comando `gcloud run deploy`, le estamos indicando a Cloud Run que el contenedor escuchará en el puerto `8000` y Cloud Run gestionará el tráfico externo hacia este puerto. El parámetro `--memory 1Gi` aumenta la memoria disponible para tu servicio a 1 Gibibyte, lo que puede ayudar a resolver errores de memoria insuficiente.
@@ -94,7 +94,11 @@ gcloud run deploy stereo-service --image us-central1-docker.pkg.dev/[ID-DE-TU-PR
 
 1. Una vez desplegado, Cloud Run te proporcionará una URL para acceder al servicio.
 2. Verifica que la API esté funcionando visitando la URL + `/docs` (interfaz Swagger de FastAPI).
-3. Prueba el endpoint `/process/{path}` donde "path" es la ruta de una imagen estereoscópica en tu bucket de Supabase.
+3. Prueba los nuevos endpoints:
+   - `/health` para verificar que el servicio está funcionando
+   - `/process/{path}` para procesar imágenes estereoscópicas completas
+   - `/process/normal/{path}` para procesar imágenes normales  
+   - `/generate-disparity/{path}` para generar solo mapas de disparidad
 
 ## 5. Monitoreo y Mantenimiento
 
