@@ -1,124 +1,211 @@
 # Guía de Despliegue: Stereo Service en Google Cloud Run
 
-Esta guía te mostrará paso a paso cómo desplegar el servicio de medición de frutos a través de fotos estereoscópicas en Google Cloud Run.
+Esta guía te mostrará cómo desplegar el servicio de medición de frutos a través de fotos estereoscópicas en Google Cloud Run usando el script automatizado de PowerShell.
 
-## Prerrequisitos
+## 🚀 Despliegue Rápido (Recomendado)
 
-- Cuenta de Google Cloud Platform
-- Google Cloud CLI instalado en tu equipo local
-- Docker instalado en tu equipo local
-- Git (para clonar el repositorio)
-- Una cuenta de Supabase con un bucket configurado para almacenar imágenes
+Si tienes PowerShell, simplemente ejecuta:
 
-## 1. Configuración Inicial
+```powershell
+cd stereo-service
+.\deploy.ps1
+```
 
-### Instalar Google Cloud SDK
+El script te guiará paso a paso y configurará todo automáticamente.
 
-1. Descarga e instala Google Cloud SDK desde [cloud.google.com/sdk](https://cloud.google.com/sdk)
-2. Inicia sesión en tu cuenta de Google Cloud:
+## 📋 Prerrequisitos
 
-```bash
+- **Google Cloud Platform**: Cuenta activa con proyecto configurado
+- **Google Cloud CLI**: Instalado y autenticado (`gcloud auth login`)
+- **Docker Desktop**: Instalado y ejecutándose
+- **PowerShell**: 5.1 o superior (Windows) o PowerShell Core (multiplataforma)
+- **Supabase**: Proyecto configurado con un bucket para imágenes
+
+## 🛠️ Configuración Inicial
+
+### 1. Autenticación en Google Cloud
+
+```powershell
+# Autenticarse en Google Cloud
 gcloud auth login
+
+# Configurar proyecto (opcional - el script puede hacerlo)
+gcloud config set project tu-proyecto-id
 ```
 
-3. Configura el proyecto de Google Cloud:
+### 2. Variables de Entorno (Opcional)
 
-```bash
-gcloud config set project [ID-DE-TU-PROYECTO]
+Puedes crear un archivo `.env` en la carpeta `stereo-service` con tus credenciales:
 
-gcloud config set project gen-lang-client-0720673337
-
-```
-
-## 2. Configuración de Variables de Entorno
-
-Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
-
-```
+```env
 SUPABASE_URL=https://tu-proyecto.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key
 BUCKET_NAME=crop-images
 ```
 
-Este archivo `.env` es útil para el desarrollo local, pero para el despliegue en Cloud Run, las variables se configurarán directamente en el comando de despliegue o mediante Secret Manager (aunque esta última opción la eliminaremos de esta guía simplificada).
+> **Nota**: Si no creas el archivo `.env`, el script te pedirá estas variables de forma segura durante la ejecución.
 
-## 3. Despliegue en Google Cloud
+## 🎯 Opciones de Despliegue
 
-### 3.1 Habilitar las APIs necesarias
+### Despliegue Interactivo (Recomendado)
+```powershell
+.\deploy.ps1
+```
+- Te guía paso a paso
+- Verifica prerrequisitos
+- Solicita credenciales de forma segura
+- Incluye confirmaciones
 
-```bash
-gcloud services enable artifactregistry.googleapis.com
-gcloud services enable run.googleapis.com
+### Despliegue con Parámetros
+```powershell
+.\deploy.ps1 -ProjectId "mi-proyecto" -SupabaseUrl "https://mi-proyecto.supabase.co" -SupabaseServiceKey "mi-clave"
 ```
 
-### 3.2 Crear un repositorio en Artifact Registry
+### Redespliegue Rápido (Sin Confirmaciones)
+```powershell
+.\deploy.ps1 -Force
+```
+- Salta confirmaciones
+- Usa configuración existente
+- Ideal para actualizaciones rápidas
 
-```bash
-gcloud artifacts repositories create stereo-repo --repository-format=docker --location=us-central1 --description="Repositorio para el servicio de estéreo"
+## 🔍 Verificación Post-Despliegue
+
+El script automáticamente:
+
+1. **Verifica el Health Check**: Prueba `/health` endpoint
+2. **Muestra URLs importantes**:
+   - 🌐 Servicio principal
+   - 📚 Documentación API (`/docs`)
+   - 🏥 Health check (`/health`)
+   - 🧪 Debug endpoint (`/debug/process-image`)
+
+3. **Proporciona configuración para frontend**:
+   ```env
+   VITE_STEREO_SERVICE_URL=https://tu-servicio.run.app
+   ```
+
+## 🐛 Solución de Problemas
+
+### Error: "Docker no está corriendo"
+```powershell
+# Inicia Docker Desktop y espera que esté completamente cargado
+# Luego ejecuta de nuevo el script
 ```
 
-### 3.3 Configurar Docker para usar Artifact Registry
-
-```bash
-gcloud auth configure-docker us-central1-docker.pkg.dev
+### Error: "No autenticado en Google Cloud"
+```powershell
+gcloud auth login
+gcloud auth application-default login
 ```
 
-### 3.4 Etiquetar y subir la imagen al repositorio
-
-```bash
-docker tag stereo-service us-central1-docker.pkg.dev/[ID-DE-TU-PROYECTO]/stereo-repo/stereo-service:latest
-docker push us-central1-docker.pkg.dev/[ID-DE-TU-PROYECTO]/stereo-repo/stereo-service:latest
-
-
-docker tag stereo-service us-central1-docker.pkg.dev/gen-lang-client-0720673337/stereo-repo/stereo-service:latest
-docker push us-central1-docker.pkg.dev/gen-lang-client-0720673337/stereo-repo/stereo-service:latest
-
+### Error: "Proyecto no existe"
+```powershell
+# Verifica que el proyecto existe y tienes acceso
+gcloud projects list
+# O usa tu propio proyecto
+.\deploy.ps1 -ProjectId "tu-proyecto-real"
 ```
 
-### 3.5 Desplegar el servicio en Cloud Run
-
-Intenta desplegar el servicio especificando el puerto que tu aplicación utiliza internamente (por defecto 8000 según tu Dockerfile). Cloud Run inyectará una variable `PORT` que tu aplicación debe respetar. El `Dockerfile` ya está configurado para usar `${PORT:-8000}`.
-
-**Importante sobre las variables de entorno:**
-Las variables pasadas con `--set-env-vars` deben estar en formato `NOMBRE1=VALOR1,NOMBRE2=VALOR2,NOMBRE3=VALOR3` todo dentro de una sola cadena de texto entre comillas. Asegúrate de que no haya espacios extra alrededor de los `=` o las comas, y que cada variable esté separada por una coma.
-
-Reemplaza `[TU_SUPABASE_SERVICE_ROLE_KEY_AQUI]` con tu clave de servicio real de Supabase y `[ID-DE-TU-PROYECTO]` con el ID de tu proyecto de Google Cloud.
-
-```bash
-gcloud run deploy stereo-service --image us-central1-docker.pkg.dev/[ID-DE-TU-PROYECTO]/stereo-repo/stereo-service:latest --platform managed --region us-central1 --allow-unauthenticated --set-env-vars "SUPABASE_URL=https://tu-proyecto.supabase.co,SUPABASE_SERVICE_ROLE_KEY=[TU_SUPABASE_SERVICE_ROLE_KEY_AQUI],BUCKET_NAME=crop-images" --port 8000 --memory 1Gi --project=[ID-DE-TU-PROYECTO]
+### Error en construcción de imagen
+```powershell
+# Limpia Docker y vuelve a intentar
+docker system prune -f
+.\deploy.ps1 -Force
 ```
 
-> **Nota**: Cloud Run establece una variable de entorno `PORT` en la que espera que tu aplicación escuche. Por defecto, esta variable es `8080`. Tu `Dockerfile` está configurado para usar `uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}`, lo que significa que usará el valor de `PORT` si está disponible, o `8000` en caso contrario. Al añadir `--port 8000` al comando `gcloud run deploy`, le estamos indicando a Cloud Run que el contenedor escuchará en el puerto `8000` y Cloud Run gestionará el tráfico externo hacia este puerto. El parámetro `--memory 1Gi` aumenta la memoria disponible para tu servicio a 1 Gibibyte, lo que puede ayudar a resolver errores de memoria insuficiente.
+### Health Check falla
+- **Supabase conectado: false**: Verifica URL y clave de Supabase
+- **YOLO cargado: false**: Problema con las dependencias de Python/OpenCV
+- **Timeout**: El servicio puede estar aún inicializándose (espera 1-2 minutos)
 
-## 4. Verificación del Despliegue
+## 📊 Comandos de Monitoreo
 
-1. Una vez desplegado, Cloud Run te proporcionará una URL para acceder al servicio.
-2. Verifica que la API esté funcionando visitando la URL + `/docs` (interfaz Swagger de FastAPI).
-3. Prueba los nuevos endpoints:
-   - `/health` para verificar que el servicio está funcionando
-   - `/process/{path}` para procesar imágenes estereoscópicas completas
-   - `/process/normal/{path}` para procesar imágenes normales  
-   - `/generate-disparity/{path}` para generar solo mapas de disparidad
+El script te proporciona comandos útiles al final:
 
-## 5. Monitoreo y Mantenimiento
+```powershell
+# Ver logs en tiempo real
+gcloud logging tail "resource.type=cloud_run_revision AND resource.labels.service_name=stereo-service"
 
-- Puedes ver los logs del servicio con:
+# Ver logs recientes
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=stereo-service" --limit=50
 
-```bash
-gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=stereo-service" --limit=10
+# Redesplegar rápidamente
+.\deploy.ps1 -Force
+
+# Eliminar servicio
+gcloud run services delete stereo-service --region=us-central1
 ```
 
-- Para actualizar el servicio después de cambios, simplemente reconstruye la imagen, súbela al repositorio y despliega nuevamente.
+## 🔧 Gestión del Servicio
 
-## 6. Troubleshooting
+### Actualizar después de cambios en código:
+```powershell
+.\deploy.ps1 -Force
+```
 
-- **Error al descargar imágenes**: Verifica que el bucket de Supabase esté configurado correctamente y que las imágenes sean accesibles públicamente.
-- **Errores de memoria**: Si encuentras errores de memoria, ajusta la configuración de recursos en Cloud Run (CPU y memoria).
-- **Tiempo de espera agotado**: Verifica que el procesamiento de imágenes no supere el límite de tiempo de Cloud Run (por defecto 5 minutos).
+### Cambiar variables de entorno:
+```powershell
+# Edita el archivo .env o ejecuta:
+.\deploy.ps1
+# Y proporciona nuevas credenciales cuando se soliciten
+```
 
-## 7. Recursos Adicionales
+### Escalar el servicio:
+```powershell
+gcloud run services update stereo-service \
+  --region=us-central1 \
+  --memory=2Gi \
+  --max-instances=20
+```
+
+## 📈 Optimizaciones de Rendimiento
+
+El script configura automáticamente:
+
+- **Memoria**: 1Gi (suficiente para YOLO + procesamiento de imágenes)
+- **CPU**: 1 vCPU 
+- **Timeout**: 300 segundos (5 minutos para procesamiento pesado)
+- **Max Instancias**: 10 (ajustable según demanda)
+- **Cold Start**: Optimizado con keep-alive
+
+## 🔒 Seguridad
+
+- **Variables de entorno**: Se solicitan de forma segura (no se almacenan en el script)
+- **Acceso sin autenticación**: Configurado para APIs públicas (ajustar según necesidades)
+- **CORS**: Configurado para desarrollo (especificar dominios en producción)
+
+## 📚 Recursos Adicionales
 
 - [Documentación de Cloud Run](https://cloud.google.com/run/docs)
 - [Documentación de FastAPI](https://fastapi.tiangolo.com/)
 - [Documentación de Supabase](https://supabase.io/docs)
-- [Documentación de Docker](https://docs.docker.com/) 
+- [Documentación de Docker](https://docs.docker.com/)
+
+## 🆘 Soporte
+
+Si encuentras problemas:
+
+1. **Ejecuta el test local**: `python test_local.py`
+2. **Revisa los logs**: Usa los comandos proporcionados por el script
+3. **Verifica prerrequisitos**: El script incluye verificaciones automáticas
+4. **Intenta redespliegue**: `.\deploy.ps1 -Force`
+
+## 🏗️ Desarrollo Local
+
+Para desarrollo y pruebas locales:
+
+```powershell
+# Crear entorno virtual
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+
+# Instalar dependencias
+pip install -r requirements.txt
+
+# Ejecutar localmente
+uvicorn app.main:app --reload --port 8000
+
+# Probar servicio local
+python test_local.py
+``` 

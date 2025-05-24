@@ -8,5 +8,3 @@ __pycache__/
 .idea/
 # Docker
 *.tar
-# Archivos sensibles
-.env
